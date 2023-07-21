@@ -1,7 +1,4 @@
-import numpy as np
 import pandas as pd
-import time
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from optbinning import BinningProcess, OptimalBinning
 
