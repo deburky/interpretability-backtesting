@@ -1,4 +1,4 @@
-# interpretabilty-backtesting
+# interpretability-backtesting
 Project repo for backtesting
 
 ```

@@ -1,37 +1,46 @@
+"""
+Binning Process
+
+Author: deburky
+Date: 2023-07-20
+"""
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from optbinning import BinningProcess, OptimalBinning
 
-def bin_data(x, y, feature_name, monotonic_trend, plot):
+
+def bin_data(feature: object, label: object,
+             feature_name: object, monotonic_trend: object) -> pd.DataFrame:
     """
-    Binner to produce bins and information value
+    A binner to produce bins and information value (IV)
     """
     optb = OptimalBinning(name=feature_name,
                           dtype="numerical",
                           solver="cp",
                           monotonic_trend=monotonic_trend)
 
-    x_woe = optb.fit(x, y)
+    optb.fit(feature, label)
 
-    binning_table = pd.DataFrame(optb.binning_table.build())
+    binning_tab = pd.DataFrame(optb.binning_table.build())
 
-    return binning_table
+    return binning_tab
+
 
 # FICO Explainable Machine Learning Challenge dataset
 # https://community.fico.com/s/explainable-machine-learning-challenge?tabset-158d9=d157e
 
-print(f"Importing dataset")
+print("Importing dataset")
 
-csv_file = f"https://raw.githubusercontent.com/deburky/boosting-scorecards/main/heloc_dataset_v1.csv"
-data = pd.read_csv(csv_file)
+CSV_FILE = "https://raw.githubusercontent.com/deburky/boosting-scorecards/main/heloc_dataset_v1.csv"
+data = pd.read_csv(CSV_FILE)
 data['RiskPerformance'].replace({'Good': 0, 'Bad': 1}, inplace=True)
 
-print(f"Importing dataset - Done")
+print("Importing dataset - Done")
 
 # Special codes
 special_codes = [-9, -8, -7]
 
-# Binning fit parameters
 # binning fit parameters
 binning_fit_params = {
     "ExternalRiskEstimate": {"monotonic_trend": "descending"},
@@ -60,9 +69,10 @@ binning_fit_params = {
 }
 
 # Data preparation
-print(f"Perform train / test split")
+print("Perform train / test split")
 
-variable_names = (pd.DataFrame(binning_fit_params).T).reset_index()['index'].to_list()
+variable_names = pd.DataFrame(binning_fit_params).T.reset_index()[
+    'index'].to_list()
 
 # Features and target
 X = data[variable_names + ['RiskPerformance']].copy()
@@ -76,36 +86,37 @@ ix_train, ix_test = train_test_split(
     random_state=24
 )
 
-print(f"Perform train / test split - Done")
+print("Perform train / test split - Done")
 
 # Binning table for all variables
-print(f"Perform binning for all variables")
+print("Perform binning for all variables")
 
 binning_summary = pd.DataFrame()
 
 for variable in variable_names:
-    binning_table = bin_data(
+    binning_frame = bin_data(
         X.loc[ix_train][variable],
         y.loc[ix_train],
         feature_name=variable,
         monotonic_trend=binning_fit_params[variable]['monotonic_trend'],
-        plot=False
     )
+    binning_frame['Variable'] = variable
+    binning_summary = pd.concat([binning_summary, binning_frame], axis=0)
 
-    binning_table['Variable'] = variable
-
-    binning_summary = pd.concat([binning_summary, binning_table], axis=0)
-
-print(f"Binning for all variables - Done")
+print("Binning for all variables - Done")
 
 # Apply post-processing
 cols = binning_summary.columns.to_list()
 cols.remove('Variable')
-binning_summary = pd.concat([binning_summary['Variable'], binning_summary[cols]], axis=1)
-binning_summary[['lower_bound', 'upper_bound']] = binning_summary['Bin'].str.strip('[]()').str.split(', ', expand=True)
+binning_summary = pd.concat(
+    [binning_summary['Variable'], binning_summary[cols]], axis=1)
+binning_summary[['lower_bound', 'upper_bound']] = binning_summary['Bin'].str.strip(
+    '[]()').str.split(', ', expand=True)
 
-binning_summary = binning_summary[~binning_summary['lower_bound'].isin(['Special', 'Missing'])].copy()
-binning_summary = binning_summary[binning_summary['upper_bound'].notnull()].copy()
+binning_summary = binning_summary[~binning_summary['lower_bound'].isin(
+    ['Special', 'Missing'])].copy()
+binning_summary = binning_summary[binning_summary['upper_bound'].notnull(
+)].copy()
 
 cols_to_drop = ['Non-event', 'Event', 'WoE', 'JS']
 binning_summary.drop(cols_to_drop, axis=1, inplace=True)
@@ -126,10 +137,10 @@ binning_summary.rename(
 # Save dataframe with bins
 binning_summary.to_csv('binning_summary.csv', index=False)
 
-print(f"Binning table - saved")
+print("Binning table - saved")
 
 # create a dataset with bins
-binning_process = BinningProcess(variable_names, 
+binning_process = BinningProcess(variable_names,
                                  special_codes=special_codes,
                                  binning_fit_params=binning_fit_params)
 
@@ -141,4 +152,4 @@ data_binned = pd.concat([data['RiskPerformance'], data_binned], axis=1)
 # Save dataframe with bins
 data_binned.to_csv('dataset_with_bins.csv', index=False)
 
-print(f"Binned data - saved")
+print("Binned data - saved")
