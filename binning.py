@@ -22,9 +22,7 @@ def bin_data(feature: object, label: object,
 
     optb.fit(feature, label)
 
-    binning_tab = pd.DataFrame(optb.binning_table.build())
-
-    return binning_tab
+    return pd.DataFrame(optb.binning_table.build())
 
 
 # FICO Explainable Machine Learning Challenge dataset
